@@ -1,0 +1,180 @@
+---
+title: "Kaggle"
+author: "Gaurav Bansal"
+date: "Saturday, August 23, 2014"
+output:
+  pdf_document: default
+  html_document:
+    fig_height: 4
+---
+
+Data Fields
+-----
+
+datetime - hourly date + timestamp  
+season -  1 = spring, 2 = summer, 3 = fall, 4 = winter 
+holiday - whether the day is considered a holiday
+workingday - whether the day is neither a weekend nor holiday
+weather - 1: Clear, Few clouds, Partly cloudy, Partly cloudy 
+2: Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist 
+3: Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds 
+4: Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog 
+temp - temperature in Celsius
+atemp - "feels like" temperature in Celsius
+humidity - relative humidity
+windspeed - wind speed
+casual - number of non-registered user rentals initiated
+registered - number of registered user rentals initiated
+count - number of total rentals
+
+```{r, echo=TRUE}
+bikejan <- read.csv("bikejan.csv")
+bikejan$datetime <- as.POSIXlt(as.character(bikejan$datetime))
+str(bikejan)
+summary(bikejan)
+x <- 1:10
+y <- 990:999
+```
+
+Univariate Analysis of Categorical Variables
+-----
+
+1. Season
+```{r, echo=TRUE}
+table(bikejan$season)/24
+```
+# Spring season whole of january
+
+
+2. Holiday
+```{r, echo=TRUE}
+table(bikejan$holiday)/24
+bikejan[(bikejan$holiday==1),c(15,17)]
+```
+# 17th of January was a holiday and a Monday
+
+3. Working Day
+```{r, echo=TRUE}
+table(bikejan$workingday)/24
+table(bikejan$day)/24
+```
+# 3 saturdays, 3 sundays and 1 Monday were holidays
+
+4. Weather
+```{r, echo=TRUE}
+table(bikejan$weather)/24
+table(bikejan$weather)
+```
+#No extreme weathers, even light rains are found only in 33 observations
+
+Univariate Analysis for continuous variables
+-----
+
+1. temp
+```{r, echo=TRUE}
+hist(bikejan$temp,xlab="temperature")
+boxplot(bikejan$temp,xlab="temperature")
+quantile(bikejan$temp,c(x/1000,0.05,0.1,0.2,0.25,0.3,0.4,0.5,0.6,0.7,0.75,0.8,0.9,0.95,0.96,0.97,0.98,0.99,y/1000))
+```
+
+2. atemp
+```{r, echo=TRUE}
+hist(bikejan$atemp,xlab="feel of temperature")
+boxplot(bikejan$atemp,xlab="feel of temperature")
+quantile(bikejan$atemp,c(x/1000,0.05,0.1,0.2,0.25,0.3,0.4,0.5,0.6,0.7,0.75,0.8,0.9,0.95,0.96,0.97,0.98,0.99,y/1000))
+```
+#feel of temeprature is greater than actual temp.
+
+
+3. humidity
+```{r, echo=TRUE}
+hist(bikejan$humidity,xlab="humidity")
+boxplot(bikejan$humidity,xlab="humidity")
+quantile(bikejan$humidity,c(x/1000,0.05,0.1,0.2,0.25,0.3,0.4,0.5,0.6,0.7,0.75,0.8,0.9,0.95,0.96,0.97,0.98,0.99,y/1000))
+```
+
+
+4. Wind Speed
+```{r, echo=TRUE}
+hist(bikejan$windspeed,xlab="wind speed")
+boxplot(bikejan$windspeed,xlab="wind speed")
+quantile(bikejan$windspeed,c(x/1000,0.05,0.1,0.2,0.25,0.3,0.4,0.5,0.6,0.7,0.75,0.8,0.9,0.95,0.96,0.97,0.98,0.99,y/1000))
+```
+
+5. Count
+```{r, echo=TRUE}
+hist(bikejan$count,xlab="count")
+boxplot(bikejan$count,xlab="count")
+quantile(bikejan$count,c(x/1000,0.05,0.1,0.2,0.25,0.3,0.4,0.5,0.6,0.7,0.75,0.8,0.9,0.95,0.96,0.97,0.98,0.99,y/1000))
+```
+
+
+Bivariate Analysis with categorical variables
+----
+
+```{r, echo=TRUE}
+boxplot(count~season,bikejan,xlab="season",ylab="count")
+```
+#only one season throughout january
+
+```{r, echo=TRUE}
+boxplot(count~holiday,bikejan,xlab="holiday",ylab="count")
+```
+#people rent more bikes when their are no holidays but there was only 1 day of holiday so this may not be correct metric to show
+
+```{r, echo=TRUE}
+boxplot(count~workingday,bikejan,xlab="workingday",ylab="count")
+```
+#people rent more bikes on working days than on holidays/saturday/sundays
+
+
+```{r, echo=TRUE}
+boxplot(count~weather,bikejan,xlab="weather",ylab="count")
+```
+#clearly, weather has a role to play for people to rent bike. '3' depics rainy weather hence less bikes, '1' depicts clear weather hence more bikes, '2' is misty.
+
+Bivariate Analysis with continuous variables
+----
+
+```{r, echo=TRUE}
+plot(count~temp,bikejan[order(bikejan$temp),],type="l",xlab="temp",ylab="count")
+plot(count~atemp,bikejan[order(bikejan$atemp),],type="l",xlab="atemp",ylab="count")
+plot(count~humidity,bikejan[order(bikejan$humidity),],type="l",xlab="humidity",ylab="count")
+plot(count~windspeed,bikejan[order(bikejan$windspeed),],type="l",xlab="humidity",ylab="count")
+```
+#more bikes are rented when temp between 5-10, humidity between 40-60 and windspeed between 8-22
+
+Time series Analysis
+
+----
+
+1. Hour
+```{r, echo=TRUE}
+bikejan_hour <- aggregate(count~hour,bikejan,sum)
+head(bikejan_hour[order(-bikejan_hour$count),],4)
+plot(count~hour,bikejan_hour,type="l")
+```
+# more bikes are in hours 8 AM and 5,6 PM 
+
+2. Day
+```{r, echo=TRUE}
+bikejan_day <- aggregate(count~day,bikejan,mean)
+bikejan_day[order(-bikejan_day$count),]
+plot(count~day,bikejan_day,cex.axis=0.50)
+```
+
+3. Date
+```{r, echo=TRUE}
+bikejan_date <- aggregate(count~date,bikejan,sum)
+head(bikejan_date[order(-bikejan_date$count),])
+tail(bikejan_date[order(-bikejan_date$count),])
+plot(count~date,bikejan_date,type="l")
+```
+# clearly there is a dip in the values on holidays
+
+Correlation
+---
+
+```{r, echo=TRUE}
+cor(bikejan[,-c(1,18,17,6,15,14,13,11,10)])
+```
