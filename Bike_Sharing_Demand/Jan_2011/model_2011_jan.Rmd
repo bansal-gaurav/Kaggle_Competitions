@@ -3,9 +3,9 @@ title: "Kaggle"
 author: "Gaurav Bansal"
 date: "Saturday, August 23, 2014"
 output:
-  pdf_document: default
   html_document:
     fig_height: 4
+  pdf_document: default
 ---
 
 Data Fields
@@ -43,7 +43,6 @@ Univariate Analysis of Categorical Variables
 ```{r, echo=TRUE}
 table(bikejan$season)/24
 ```
-# Spring season whole of january
 
 
 2. Holiday
@@ -51,21 +50,18 @@ table(bikejan$season)/24
 table(bikejan$holiday)/24
 bikejan[(bikejan$holiday==1),c(15,17)]
 ```
-# 17th of January was a holiday and a Monday
 
 3. Working Day
 ```{r, echo=TRUE}
 table(bikejan$workingday)/24
 table(bikejan$day)/24
 ```
-# 3 saturdays, 3 sundays and 1 Monday were holidays
 
 4. Weather
 ```{r, echo=TRUE}
 table(bikejan$weather)/24
 table(bikejan$weather)
 ```
-#No extreme weathers, even light rains are found only in 33 observations
 
 Univariate Analysis for continuous variables
 -----
@@ -83,7 +79,6 @@ hist(bikejan$atemp,xlab="feel of temperature")
 boxplot(bikejan$atemp,xlab="feel of temperature")
 quantile(bikejan$atemp,c(x/1000,0.05,0.1,0.2,0.25,0.3,0.4,0.5,0.6,0.7,0.75,0.8,0.9,0.95,0.96,0.97,0.98,0.99,y/1000))
 ```
-#feel of temeprature is greater than actual temp.
 
 
 3. humidity
@@ -115,23 +110,21 @@ Bivariate Analysis with categorical variables
 ```{r, echo=TRUE}
 boxplot(count~season,bikejan,xlab="season",ylab="count")
 ```
-#only one season throughout january
 
 ```{r, echo=TRUE}
 boxplot(count~holiday,bikejan,xlab="holiday",ylab="count")
 ```
-#people rent more bikes when their are no holidays but there was only 1 day of holiday so this may not be correct metric to show
 
 ```{r, echo=TRUE}
 boxplot(count~workingday,bikejan,xlab="workingday",ylab="count")
 ```
-#people rent more bikes on working days than on holidays/saturday/sundays
+
 
 
 ```{r, echo=TRUE}
 boxplot(count~weather,bikejan,xlab="weather",ylab="count")
 ```
-#clearly, weather has a role to play for people to rent bike. '3' depics rainy weather hence less bikes, '1' depicts clear weather hence more bikes, '2' is misty.
+
 
 Bivariate Analysis with continuous variables
 ----
@@ -142,7 +135,7 @@ plot(count~atemp,bikejan[order(bikejan$atemp),],type="l",xlab="atemp",ylab="coun
 plot(count~humidity,bikejan[order(bikejan$humidity),],type="l",xlab="humidity",ylab="count")
 plot(count~windspeed,bikejan[order(bikejan$windspeed),],type="l",xlab="humidity",ylab="count")
 ```
-#more bikes are rented when temp between 5-10, humidity between 40-60 and windspeed between 8-22
+
 
 Time series Analysis
 
@@ -154,7 +147,7 @@ bikejan_hour <- aggregate(count~hour,bikejan,sum)
 head(bikejan_hour[order(-bikejan_hour$count),],4)
 plot(count~hour,bikejan_hour,type="l")
 ```
-# more bikes are in hours 8 AM and 5,6 PM 
+
 
 2. Day
 ```{r, echo=TRUE}
@@ -170,7 +163,7 @@ head(bikejan_date[order(-bikejan_date$count),])
 tail(bikejan_date[order(-bikejan_date$count),])
 plot(count~date,bikejan_date,type="l")
 ```
-# clearly there is a dip in the values on holidays
+
 
 Correlation
 ---
@@ -178,3 +171,71 @@ Correlation
 ```{r, echo=TRUE}
 cor(bikejan[,-c(1,18,17,6,15,14,13,11,10)])
 ```
+
+
+Summary of EDA
+---
+
+1. Spring season whole of january
+2. 17th of January was a holiday and a Monday
+3. 3 saturdays, 3 sundays and 1 Monday were holidays
+4. No extreme weathers, even light rains are found only in 33 observations
+5. feel of temeprature is greater than actual temp.
+6. only one season throughout january
+7. people rent more bikes when their are no holidays but there was only 1 day of holiday so this may not be correct metric to show
+8. people rent more bikes on working days than on holidays/saturday/sundays#clearly, weather has a role to play for people to rent bike. '3' depics rainy weather hence less bikes, '1' depicts clear weather hence more bikes, '2' is misty.#more bikes are rented when temp between 5-10, humidity between 40-60 and windspeed between 8-22# more bikes are in hours 8 AM and 5,6 PM # clearly there is a dip in the values on holidays
+
+
+Model
+---
+
+```{r, echo=TRUE}
+#converting all categorical variables as factor variables
+bikejan$season <- as.factor(bikejan$season)
+bikejan$holiday <- as.factor(bikejan$holiday)
+bikejan$workingday <- as.factor(bikejan$workingday)
+bikejan$hour <- as.numeric(bikejan$hour)
+bikejan$day <- as.factor(bikejan$day)
+#weather is taken as numeric variable, as there is a value in the prediction data set with weather=4, to predict that value we keep the weather as continuos variable
+bikejan$weather <- as.numeric(bikejan$weather)
+```
+
+```{r, echo=TRUE}
+#let us put all the variables in the model  
+library(car)
+library(MASS)
+model <- lm(count~ holiday+workingday+weather+temp+atemp+humidity+windspeed+hour+day, bikejan)
+#vif(model)
+# using this as model, it shows an ERROR :"Error in vif.default(model) : there are aliased coefficients in the model"
+#hence, i drop day from the model, as it may have a perfect multicollinearity with the workingday
+model <- lm(count~ holiday+workingday+weather+temp+atemp+humidity+windspeed+hour, bikejan)
+vif(model)
+#VIF of temp and atemp is very high, they are collinear variables, so we drop atemp, as it has high value of VIF
+model <- lm(count~ holiday+workingday+weather+temp+humidity+windspeed+hour, bikejan)
+vif(model)
+#The VIF of all variable is less than 2, hence we consider al the variables for the model, let us ty to have the best fit using stepwise regression model
+model_bike <- stepAIC(model,direction= "both")
+model_bike$anova
+#using stepwise regression it has dropped the 'holiday' variable. When cheked with the initial model, holiday wasn't significant
+summary(model_bike)
+par(mfrow=c(2,2))
+plot(model_bike)
+```
+
+```{r, echo=TRUE}
+#input test data set
+testjan <- read.csv("testjan.csv")
+#changing variables
+testjan$season <- as.factor(testjan$season)
+testjan$holiday <- as.factor(testjan$holiday)
+testjan$workingday <- as.factor(testjan$workingday)
+testjan$hour <- as.numeric(testjan$hour)
+testjan$weather <- as.numeric(testjan$weather)
+
+#predicting count values from the model
+predict_test <- predict(model,testjan)
+
+predict_values <- cbind(testjan,ceiling(predict_test))
+write.csv(predict_values,"output.csv")
+```
+
