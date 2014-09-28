@@ -3,9 +3,9 @@ title: "Kaggle"
 author: "Gaurav Bansal"
 date: "Saturday, August 23, 2014"
 output:
+  pdf_document: default
   html_document:
     fig_height: 4
-  pdf_document: default
 ---
 
 Data Fields
@@ -195,23 +195,30 @@ bikejan$season <- as.factor(bikejan$season)
 bikejan$holiday <- as.factor(bikejan$holiday)
 bikejan$workingday <- as.factor(bikejan$workingday)
 bikejan$hour <- as.numeric(bikejan$hour)
-bikejan$day <- as.factor(bikejan$day)
+bikejan$day <- as.numeric(bikejan$day)
 #weather is taken as numeric variable, as there is a value in the prediction data set with weather=4, to predict that value we keep the weather as continuos variable
 bikejan$weather <- as.numeric(bikejan$weather)
 ```
 
 ```{r, echo=TRUE}
+#partitioning the data into train dataset and test dataset
+library(caret)
+intrain <- createDataPartition(bikejan$count,times=1,p=.8, list=FALSE)
+trainjan <- bikejan[intrain,]
+testjan <- bikejan[-intrain,]
+```
+
+
+
+
+```{r, echo=TRUE}
 #let us put all the variables in the model  
 library(car)
 library(MASS)
-model <- lm(count~ holiday+workingday+weather+temp+atemp+humidity+windspeed+hour+day, bikejan)
-#vif(model)
-# using this as model, it shows an ERROR :"Error in vif.default(model) : there are aliased coefficients in the model"
-#hence, i drop day from the model, as it may have a perfect multicollinearity with the workingday
-model <- lm(count~ holiday+workingday+weather+temp+atemp+humidity+windspeed+hour, bikejan)
+model <- lm(count~ holiday+workingday+weather+temp+atemp+humidity+windspeed+hour+day, trainjan)
 vif(model)
 #VIF of temp and atemp is very high, they are collinear variables, so we drop atemp, as it has high value of VIF
-model <- lm(count~ holiday+workingday+weather+temp+humidity+windspeed+hour, bikejan)
+model <- lm(count~ holiday+workingday+weather+temp+humidity+windspeed+hour+day, trainjan)
 vif(model)
 #The VIF of all variable is less than 2, hence we consider al the variables for the model, let us ty to have the best fit using stepwise regression model
 model_bike <- stepAIC(model,direction= "both")
@@ -223,19 +230,36 @@ plot(model_bike)
 ```
 
 ```{r, echo=TRUE}
-#input test data set
-testjan <- read.csv("testjan.csv")
-#changing variables
 testjan$season <- as.factor(testjan$season)
 testjan$holiday <- as.factor(testjan$holiday)
 testjan$workingday <- as.factor(testjan$workingday)
 testjan$hour <- as.numeric(testjan$hour)
 testjan$weather <- as.numeric(testjan$weather)
-
+testjan$day <- as.numeric(testjan$day)
 #predicting count values from the model
-predict_test <- predict(model,testjan)
-
-predict_values <- cbind(testjan,ceiling(predict_test))
-write.csv(predict_values,"output.csv")
+predict_test_lm <- ceiling(predict(model,testjan))
 ```
 
+```{r, echo=TRUE}
+#classification tree model
+modfit_tree <- train(count ~ holiday+workingday+weather+temp+atemp+humidity+windspeed+hour+day, data= trainjan, method= "rpart")
+modfit_tree$finalModel
+plot(modfit_tree)
+predict_test_tree <- ceiling(predict(modfit_tree,testjan))
+```
+
+```{r, echo=TRUE}
+#random forest model
+modfit_rf <- train(count ~ holiday+workingday+weather+temp+atemp+humidity+windspeed+hour+day, data= testjan, method= "rf", prox= TRUE)
+plot(modfit_rf)
+modfit_rf
+predict_test_rf <- ceiling(predict(modfit_rf,testjan))
+```
+
+```{r, echo=TRUE}
+mape <- function(y,yhat)
+  {sum(abs((y-yhat)/yhat))}
+mape (testjan$count,predict_test_lm)
+mape (testjan$count,predict_test_tree)
+mape (testjan$count,predict_test_rf)
+```
